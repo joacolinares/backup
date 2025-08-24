@@ -37,7 +37,6 @@ import { type BBoardDerivedState, type DeployedBBoardAPI } from '../../../api/sr
 import { useDeployedBoardContext } from '../hooks';
 import { type BoardDeployment } from '../contexts';
 import { type Observable } from 'rxjs';
-import { State } from '../../../contract/src/index';
 import { EmptyCardContent } from './Board.EmptyCardContent';
 
 /** The props required by the {@link Board} component. */
@@ -45,6 +44,30 @@ export interface BoardProps {
   /** The observable bulletin board deployment. */
   boardDeployment$?: Observable<BoardDeployment>;
 }
+
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.trim().toLowerCase().replace(/^0x/, "");
+  if (!/^[0-9a-f]*$/.test(clean) || clean.length % 2 !== 0) {
+    throw new Error("Hex inválido");
+  }
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(clean.substr(i * 2, 2), 16);
+  }
+  return out;
+}
+
+// (opcional) exigir largo exacto
+function expectLen(u8: Uint8Array, len: number, label = "bytes"): Uint8Array {
+  if (u8.length !== len) throw new Error(`${label} debe tener ${len} bytes, tiene ${u8.length}`);
+  return u8;
+}
+const hex = "8f24d209ca61d8b2ecf641583d63c0b072558a9653059e6e3b7586e42d4a31c3";
+const bytes32 = expectLen(hexToBytes(hex), 32, "clave");
+const country2 = new Uint8Array([..."AR"].map(c => c.charCodeAt(0)));
+
+
 
 /**
  * Provides the UI for a deployed bulletin board contract; allowing messages to be posted or removed
@@ -79,18 +102,12 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
     [boardApiProvider],
   );
 
-  // Callback to handle the posting of a message. The message text is captured in the `messagePrompt`
-  // state, and we just need to forward it to the `post` method of the `DeployedBBoardAPI` instance
-  // that we received in the `deployedBoardAPI` state.
+  // LLAMA A ENROLLONCE
   const onPostMessage = useCallback(async () => {
-    if (!messagePrompt) {
-      return;
-    }
-
     try {
       if (deployedBoardAPI) {
         setIsWorking(true);
-        await deployedBoardAPI.post(messagePrompt);
+        await deployedBoardAPI.enrollOnce(bytes32,country2);
       }
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
@@ -101,18 +118,18 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
 
   // Callback to handle the taking down of a message. Again, we simply invoke the `takeDown` method
   // of the `DeployedBBoardAPI` instance.
-  const onDeleteMessage = useCallback(async () => {
-    try {
-      if (deployedBoardAPI) {
-        setIsWorking(true);
-        await deployedBoardAPI.takeDown();
-      }
-    } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsWorking(false);
-    }
-  }, [deployedBoardAPI, setErrorMessage, setIsWorking]);
+  // const onDeleteMessage = useCallback(async () => {
+  //   try {
+  //     if (deployedBoardAPI) {
+  //       setIsWorking(true);
+  //       await deployedBoardAPI.takeDown();
+  //     }
+  //   } catch (error: unknown) {
+  //     setErrorMessage(error instanceof Error ? error.message : String(error));
+  //   } finally {
+  //     setIsWorking(false);
+  //   }
+  // }, [deployedBoardAPI, setErrorMessage, setIsWorking]);
 
   const onCopyContractAddress = useCallback(async () => {
     if (deployedBoardAPI) {
@@ -186,17 +203,17 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
             </Typography>
           </Backdrop>
           <CardHeader
-            avatar={
-              boardState ? (
-                boardState.state === State.VACANT || (boardState.state === State.OCCUPIED && boardState.isOwner) ? (
-                  <LockOpenIcon data-testid="post-unlocked-icon" />
-                ) : (
-                  <LockIcon data-testid="post-locked-icon" />
-                )
-              ) : (
-                <Skeleton variant="circular" width={20} height={20} />
-              )
-            }
+            // avatar={
+            //   boardState ? (
+            //     boardState.state === State.VACANT || (boardState.state === State.OCCUPIED && boardState.isOwner) ? (
+            //       <LockOpenIcon data-testid="post-unlocked-icon" />
+            //     ) : (
+            //       <LockIcon data-testid="post-locked-icon" />
+            //     )
+            //   ) : (
+            //     <Skeleton variant="circular" width={20} height={20} />
+            //   )
+            // }
             titleTypographyProps={{ color: 'primary' }}
             title={toShortFormatContractAddress(deployedBoardAPI?.deployedContractAddress) ?? 'Loading...'}
             action={
@@ -209,7 +226,7 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
               )
             }
           />
-          <CardContent>
+          {/* <CardContent>
             {boardState ? (
               boardState.state === State.OCCUPIED ? (
                 <Typography data-testid="board-posted-message" minHeight={160} color="primary">
@@ -237,19 +254,19 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
             ) : (
               <Skeleton variant="rectangular" width={245} height={160} />
             )}
-          </CardContent>
+          </CardContent> */}
           <CardActions>
             {deployedBoardAPI ? (
               <React.Fragment>
                 <IconButton
                   title="Post message"
                   data-testid="board-post-message-btn"
-                  disabled={boardState?.state === State.OCCUPIED || !messagePrompt?.length}
+                  // disabled={boardState?.state === State.OCCUPIED || !messagePrompt?.length}
                   onClick={onPostMessage}
                 >
                   <WriteIcon />
                 </IconButton>
-                <IconButton
+                {/* <IconButton
                   title="Take down message"
                   data-testid="board-take-down-message-btn"
                   disabled={
@@ -258,7 +275,7 @@ export const Board: React.FC<Readonly<BoardProps>> = ({ boardDeployment$ }) => {
                   onClick={onDeleteMessage}
                 >
                   <DeleteIcon />
-                </IconButton>
+                </IconButton> */}
               </React.Fragment>
             ) : (
               <Skeleton variant="rectangular" width={80} height={20} />
